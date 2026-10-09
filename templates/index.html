@@ -742,12 +742,9 @@
     .receipt-link:hover { text-decoration: underline; }
 
     /* ═══════════════════════════════════════════════════
-       RESPONSIVE GRID HELPERS
+       RESPONSIVE GRID HELPERS & UTILITIES
     ═══════════════════════════════════════════════════ */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 1024px) {
-      .grid-2 { grid-template-columns: 1fr; }
-    }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
     .mb-6  { margin-bottom: 6px; }
     .mb-16 { margin-bottom: 16px; }
@@ -757,6 +754,242 @@
     .flex-between { display: flex; justify-content: space-between; align-items: center; }
     .gap-8 { gap: 8px; }
     .gap-12 { gap: 12px; }
+
+    /* Filter tabs pill bar */
+    .filter-tabs-bar {
+      display: flex;
+      gap: 8px;
+      padding: 0 0 12px 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .filter-tabs-bar::-webkit-scrollbar { display: none; }
+    .filter-tabs-bar .filter-tab { flex-shrink: 0; }
+
+    /* Mobile Hamburger Menu Button */
+    .mobile-menu-btn {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      transition: var(--transition);
+    }
+    .mobile-menu-btn:hover, .mobile-menu-btn:active {
+      background: rgba(255, 255, 255, 0.16);
+    }
+    .mobile-menu-btn span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: var(--text-primary);
+      border-radius: 2px;
+      transition: var(--transition);
+    }
+
+    #sidebar-backdrop {
+      display: none;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVE BREAKPOINTS (Tablets & Mobile)
+    ═══════════════════════════════════════════════════ */
+    @media (max-width: 1024px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      /* Mobile Hamburger & Off-Canvas Navigation */
+      .mobile-menu-btn { display: flex; }
+
+      #sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.70);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 998;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+      #sidebar-backdrop.active {
+        display: block;
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 275px;
+        min-width: 275px;
+        z-index: 999;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.85);
+      }
+      #sidebar.open {
+        transform: translateX(0);
+      }
+
+      /* Topbar adjustments */
+      #topbar {
+        padding: 0 14px;
+        gap: 10px;
+        height: 56px;
+        min-height: 56px;
+      }
+      #topbar .page-title {
+        font-size: 15px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .topbar-actions {
+        gap: 6px;
+      }
+      .topbar-actions .btn {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+
+      /* Content Area */
+      #content {
+        height: calc(100vh - 56px);
+        max-height: calc(100vh - 56px);
+        padding: 16px 12px 100px 12px;
+      }
+
+      /* Stat cards: 1 column on phones */
+      .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .stat-card {
+        padding: 14px 16px;
+      }
+
+      /* Glass cards */
+      .glass-card {
+        padding: 16px 14px;
+        border-radius: 14px;
+      }
+      .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+      }
+      .card-header h2 {
+        font-size: 15px;
+      }
+      .card-header .flex {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+      .search-wrap,
+      .search-wrap input {
+        width: 100% !important;
+      }
+
+      /* Forms in cards and modals */
+      .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+      }
+      .form-group.span-2 {
+        grid-column: span 1 !important;
+      }
+
+      /* Modals */
+      .modal {
+        min-width: unset;
+        width: 95%;
+        max-width: 95%;
+        max-height: 88vh;
+        overflow-y: auto;
+        padding: 20px 16px;
+        border-radius: 14px;
+      }
+      .modal-header {
+        margin-bottom: 16px;
+      }
+      .modal-header h3 {
+        font-size: 16px;
+      }
+      .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+        margin-top: 18px;
+      }
+      .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* Tables & Touch Scrolling */
+      .table-wrap {
+        margin: 0 -8px;
+        padding: 0 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        font-size: 12px;
+        min-width: 580px;
+      }
+      th {
+        padding: 9px 10px;
+        font-size: 10px;
+      }
+      td {
+        padding: 10px 10px;
+      }
+      td .btn-sm {
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+
+      /* Toast on mobile */
+      #toast-container {
+        left: 12px;
+        right: 12px;
+        bottom: 16px;
+      }
+      .toast {
+        padding: 12px 14px;
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .topbar-actions .btn-ghost {
+        display: none; /* Hide refresh button on tiny screens to preserve space */
+      }
+      #wa-qr-box {
+        width: 180px !important;
+        height: 180px !important;
+      }
+      #wa-qr-img {
+        width: 170px !important;
+        height: 170px !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -829,9 +1062,15 @@
       </div>
     </aside>
 
+    <!-- MOBILE SIDEBAR BACKDROP -->
+    <div id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
     <!-- MAIN CONTENT -->
     <div id="main">
       <div id="topbar">
+        <button id="mobile-menu-btn" class="mobile-menu-btn" onclick="toggleMobileSidebar()" aria-label="Toggle navigation">
+          <span></span><span></span><span></span>
+        </button>
         <div class="page-title" id="topbar-title">Dashboard</div>
         <div class="topbar-actions">
           <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Refresh</button>
@@ -951,7 +1190,7 @@
               </div>
             </div>
             <!-- Filter tabs -->
-            <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap;">
+            <div class="filter-tabs-bar">
               <button class="btn btn-ghost btn-sm filter-tab active" data-filter="all"      onclick="setTenantFilter('all',this)">All</button>
               <button class="btn btn-ghost btn-sm filter-tab"        data-filter="active"   onclick="setTenantFilter('active',this)">✅ Active</button>
               <button class="btn btn-ghost btn-sm filter-tab"        data-filter="overdue"  onclick="setTenantFilter('overdue',this)" style="color:#f97316;">🟠 Overdue</button>
@@ -1354,6 +1593,35 @@
     }
 
     /* ────────────────────────────────────────────────
+       MOBILE NAVIGATION DRAWER
+    ──────────────────────────────────────────────── */
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (!sb) return;
+      const isOpen = sb.classList.contains('open');
+      if (isOpen) {
+        sb.classList.remove('open');
+        if (bd) bd.classList.remove('active');
+      } else {
+        sb.classList.add('open');
+        if (bd) bd.classList.add('active');
+      }
+    }
+
+    function closeMobileSidebar() {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      if (sb) sb.classList.remove('open');
+      if (bd) bd.classList.remove('active');
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeMobileSidebar();
+    });
+
+    /* ────────────────────────────────────────────────
        TAB NAVIGATION
     ──────────────────────────────────────────────── */
     const tabTitles = {
@@ -1365,6 +1633,7 @@
     };
 
     function switchTab(tab, el) {
+      closeMobileSidebar();
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
       document.getElementById('panel-' + tab).classList.add('active');
