@@ -100,6 +100,7 @@ _DEFAULT_SETTINGS = {
     "whatsapp_auth_token":    "",
     "whatsapp_sender":        "",
     "receipt_logo_path":      "",
+    "admin_pin":              os.environ.get("ADMIN_PIN", "1234"),
 }
 
 

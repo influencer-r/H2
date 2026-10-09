@@ -12,12 +12,12 @@ import logging
 import os
 import sys
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from flask import (
     Flask, jsonify, request, render_template,
-    send_from_directory, abort,
+    send_from_directory, abort, session,
 )
 
 # ---------------------------------------------------------------------------
@@ -62,7 +62,38 @@ app = Flask(
     template_folder=str(_BASE / "templates"),
     static_folder=str(_BASE / "static"),
 )
-app.secret_key = os.urandom(32)
+app.secret_key = os.environ.get("SECRET_KEY", "haven-stays-secret-key-readon-adola-devs-2026")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+
+
+# ============================================================
+# SECURITY SHIELD — Before Request Authentication Hook
+# ============================================================
+@app.before_request
+def shield_admin_routes():
+    # Public whitelisted routes (M-Pesa automated webhooks, health checks, static assets, auth APIs)
+    exempt_prefixes = (
+        "/health",
+        "/api/payments/callback",
+        "/api/v1/payments/webhook",
+        "/api/v1/auth/",
+        "/static/",
+        "/storage/assets/",
+    )
+    if request.path == "/" or any(request.path.startswith(p) for p in exempt_prefixes):
+        return None
+
+    # All management endpoints and receipts strictly require Landlord PIN session
+    if not session.get("authenticated"):
+        if request.path.startswith("/api/"):
+            return jsonify({
+                "error": "Unauthorized: Landlord PIN authentication required.",
+                "authenticated": False,
+            }), 401
+        elif request.path.startswith("/storage/receipts/"):
+            return abort(401)
 
 
 # ============================================================
@@ -86,6 +117,52 @@ def serve_receipt(filename):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+# ============================================================
+# API — LANDLORD AUTHENTICATION
+# ============================================================
+@app.route("/api/v1/auth/login", methods=["POST"])
+def api_auth_login():
+    data = request.get_json(force=True, silent=True) or {}
+    pin = str(data.get("pin", "")).strip()
+    if not pin:
+        return jsonify({"authenticated": False, "error": "Please enter your Landlord PIN."}), 400
+
+    current_pin = db.get_setting("admin_pin") or "1234"
+    if pin == current_pin:
+        session.permanent = True
+        session["authenticated"] = True
+        session["auth_time"] = datetime.utcnow().isoformat()
+        return jsonify({"authenticated": True, "message": "Access granted."})
+    return jsonify({"authenticated": False, "error": "Incorrect Landlord PIN. Access denied."}), 401
+
+
+@app.route("/api/v1/auth/logout", methods=["POST"])
+def api_auth_logout():
+    session.clear()
+    return jsonify({"authenticated": False, "message": "Logged out successfully."})
+
+
+@app.route("/api/v1/auth/status", methods=["GET"])
+def api_auth_status():
+    return jsonify({"authenticated": bool(session.get("authenticated"))})
+
+
+@app.route("/api/v1/auth/change-pin", methods=["POST"])
+def api_auth_change_pin():
+    if not session.get("authenticated"):
+        return jsonify({"error": "Unauthorized"}), 401
+    data = request.get_json(force=True, silent=True) or {}
+    old_pin = str(data.get("old_pin", "")).strip()
+    new_pin = str(data.get("new_pin", "")).strip()
+    current_pin = db.get_setting("admin_pin") or "1234"
+    if old_pin != current_pin:
+        return jsonify({"error": "Current PIN is incorrect."}), 400
+    if len(new_pin) < 4:
+        return jsonify({"error": "New PIN must be at least 4 digits or characters."}), 400
+    db.set_setting("admin_pin", new_pin)
+    return jsonify({"message": "Landlord PIN updated successfully."})
 
 
 # ============================================================
@@ -476,11 +553,13 @@ def api_whatsapp_test():
 @app.route("/api/v1/settings", methods=["GET"])
 def api_get_settings():
     settings = db.get_all_settings()
-    # Redact secrets from GET response (show only first 4 chars)
-    sensitive = {"whatsapp_auth_token", "mpesa_consumer_secret", "mpesa_passkey"}
+    # Redact secrets from GET response
+    sensitive = {"whatsapp_auth_token", "mpesa_consumer_secret", "mpesa_passkey", "admin_pin"}
     safe = {}
     for k, v in settings.items():
-        if k in sensitive and len(v) > 4:
+        if k == "admin_pin":
+            safe[k] = "●●●●"
+        elif k in sensitive and len(v) > 4:
             safe[k] = v[:4] + "●●●●●●●●"
         else:
             safe[k] = v
@@ -493,8 +572,13 @@ def api_save_settings():
     if not isinstance(data, dict):
         return jsonify({"error": "Payload must be a JSON object."}), 400
 
-    # Strip redacted values before saving
-    clean = {k: v for k, v in data.items() if "●" not in str(v)}
+    # Strip redacted values and handle admin_pin separately
+    clean = {k: v for k, v in data.items() if "●" not in str(v) and k != "admin_pin"}
+    if "admin_pin" in data and "●" not in str(data["admin_pin"]) and str(data["admin_pin"]).strip():
+        new_pin = str(data["admin_pin"]).strip()
+        if len(new_pin) >= 4:
+            clean["admin_pin"] = new_pin
+
     db.bulk_upsert_settings(clean)
     return jsonify({"message": "Settings saved."})
 
