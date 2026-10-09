@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Haven Stays — Property Management</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══════════════════════════════════════════════════
+       RESET & ROOT VARIABLES
+    ═══════════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:     #0B0F19;
+      --bg-mid:      #111827;
+      --accent:      #38BDF8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --accent-dark: #0EA5E9;
+      --text-primary: #FFFFFF;
+      --text-muted:   #94A3B8;
+      --text-dim:     #475569;
+      --glass-bg:    rgba(15, 23, 42, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-hover: rgba(15, 23, 42, 0.80);
+      --danger:      #F87171;
+      --success:     #34D399;
+      --warning:     #FBBF24;
+      --blur:        blur(20px);
+      --radius:      16px;
+      --radius-sm:   10px;
+      --transition:  all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       BACKGROUND SLIDESHOW
+    ═══════════════════════════════════════════════════ */
+    #slideshow {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      opacity: 0;
+      transform: scale(1.04);
+      transition: opacity 2.5s ease-in-out, transform 6s ease-out;
+      will-change: opacity, transform;
+    }
+    .slide.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* Property background slideshow — real images from static/images/ */
+    .slide:nth-child(1) { background: url("{{ url_for('static', filename='images/image 1.jpg') }}") center/cover no-repeat; }
+    .slide:nth-child(2) { background: url("{{ url_for('static', filename='images/image 2.jpeg') }}") center/cover no-repeat; }
+    .slide:nth-child(3) { background: url("{{ url_for('static', filename='images/image 3.jpg') }}") center/cover no-repeat; }
+    .slide:nth-child(4) { background: url("{{ url_for('static', filename='images/images 4.jpg') }}") center/cover no-repeat; }
+    .slide:nth-child(5) { background: url("{{ url_for('static', filename='images/images 5.jpg') }}") center/cover no-repeat; }
+
+    /* Dark overlay on all slides */
+    #slideshow::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(11, 15, 25, 0.50) 0%,
+        rgba(11, 15, 25, 0.40) 50%,
+        rgba(11, 15, 25, 0.65) 100%
+      );
+      z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       APP SHELL
+    ═══════════════════════════════════════════════════ */
+    #app {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       SIDEBAR NAVIGATION
+    ═══════════════════════════════════════════════════ */
+    #sidebar {
+      width: 260px;
+      min-width: 260px;
+      height: 100vh;
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-right: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .sidebar-logo {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .sidebar-logo .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    .brand-text { line-height: 1.2; }
+    .brand-text h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+    .brand-text span { font-size: 11px; color: var(--text-muted); font-weight: 400; }
+
+    .sidebar-tunnel {
+      margin: 16px;
+      padding: 12px 14px;
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+    }
+    .sidebar-tunnel .tunnel-label {
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .tunnel-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: var(--transition);
+    }
+    .tunnel-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .tunnel-url {
+      color: var(--accent);
+      font-size: 10px;
+      word-break: break-all;
+      line-height: 1.4;
+      cursor: pointer;
+      display: block;
+    }
+    .tunnel-url:hover { text-decoration: underline; }
+
+    nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      padding: 12px 24px 6px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 20px;
+      margin: 2px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+      border-color: var(--glass-border);
+    }
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(56,189,248,0.15) 0%, rgba(14,165,233,0.08) 100%);
+      color: var(--accent);
+      border-color: rgba(56,189,248,0.25);
+      box-shadow: 0 0 20px rgba(56,189,248,0.08);
+    }
+    .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: var(--bg-deep);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      padding: 14px 16px;
+      border-top: 1px solid var(--glass-border);
+      background: rgba(11, 15, 25, 0.4);
+    }
+    .dev-badge {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+    .dev-badge-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dev-badge-link {
+      display: block;
+      text-decoration: none;
+      background: linear-gradient(135deg, rgba(56,189,248,0.08) 0%, rgba(14,165,233,0.03) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 8px;
+      padding: 8px 10px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dev-badge-link:hover {
+      background: linear-gradient(135deg, rgba(56,189,248,0.16) 0%, rgba(14,165,233,0.08) 100%);
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 4px 14px rgba(56,189,248,0.15);
+      transform: translateY(-1px);
+    }
+    .dev-brand-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #e2e8f0;
+      line-height: 1.3;
+    }
+    .dev-pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      flex-shrink: 0;
+    }
+    .dev-brand-line strong {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+    .dev-support-line {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .dev-support-line:hover {
+      color: #38bdf8;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       MAIN CONTENT AREA
+    ═══════════════════════════════════════════════════ */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* TOP HEADER */
+    #topbar {
+      height: 64px;
+      min-height: 64px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+    }
+    #topbar .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      flex: 1;
+    }
+    .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* CONTENT PANELS */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    #content::-webkit-scrollbar { width: 6px; }
+    #content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+    .tab-panel { display: none; animation: fadeUp 0.3s ease; }
+    .tab-panel.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       GLASS CARDS
+    ═══════════════════════════════════════════════════ */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.05) inset;
+      padding: 24px;
+    }
+    .glass-card:hover {
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(56,189,248,0.08);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .card-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-icon {
+      width: 32px; height: 32px;
+      background: rgba(56, 189, 248, 0.12);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       STAT CARDS
+    ═══════════════════════════════════════════════════ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56,189,248,0.3);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--text-primary);
+    }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.warning { color: var(--warning); }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 6px;
+    }
+    .stat-icon-bg {
+      position: absolute;
+      top: 16px; right: 16px;
+      font-size: 28px;
+      opacity: 0.15;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       FORMS
+    ═══════════════════════════════════════════════════ */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .form-grid.single { grid-template-columns: 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.span-2 { grid-column: span 2; }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+    }
+
+    input[type="text"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="date"],
+    input[type="password"],
+    input[type="datetime-local"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      transition: var(--transition);
+      outline: none;
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-dim); }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      background: rgba(15, 23, 42, 0.7);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    select option { background: var(--bg-mid); color: var(--text-primary); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* ═══════════════════════════════════════════════════
+       BUTTONS
+    ═══════════════════════════════════════════════════ */
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      color: var(--bg-deep);
+      box-shadow: 0 4px 15px var(--accent-glow);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 25px rgba(56,189,248,0.4);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--glass-border);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.06);
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.2);
+    }
+    .btn-danger {
+      background: rgba(248, 113, 113, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+    .btn-danger:hover { background: rgba(248, 113, 113, 0.25); }
+    .btn-success {
+      background: rgba(52, 211, 153, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+    }
+    .btn-success:hover { background: rgba(52, 211, 153, 0.25); }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+    /* ═══════════════════════════════════════════════════
+       TABLES
+    ═══════════════════════════════════════════════════ */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr {
+      border-bottom: 1px solid var(--glass-border);
+    }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: var(--transition);
+    }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    td {
+      padding: 13px 16px;
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+    td.muted { color: var(--text-muted); font-size: 12px; }
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-dim);
+    }
+    .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+
+    /* ═══════════════════════════════════════════════════
+       BADGES / STATUS PILLS
+    ═══════════════════════════════════════════════════ */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+    .badge-active  { background: rgba(52,211,153,0.12); color: var(--success); border: 1px solid rgba(52,211,153,0.25); }
+    .badge-active::before  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .badge-inactive { background: rgba(148,163,184,0.1); color: var(--text-muted); border: 1px solid var(--glass-border); }
+    .badge-inactive::before { background: var(--text-dim); }
+    .badge-pending  { background: rgba(251,191,36,0.1); color: var(--warning); border: 1px solid rgba(251,191,36,0.25); }
+    .badge-pending::before  { background: var(--warning); }
+    .badge-sent     { background: rgba(52,211,153,0.12); color: var(--success); border: 1px solid rgba(52,211,153,0.25); }
+    .badge-sent::before { background: var(--success); }
+    .badge-failed   { background: rgba(248,113,113,0.1); color: var(--danger); border: 1px solid rgba(248,113,113,0.25); }
+    .badge-failed::before { background: var(--danger); }
+
+    /* ═══════════════════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ═══════════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 14px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      min-width: 280px;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideInRight 0.3s ease;
+      pointer-events: auto;
+      border-left: 3px solid var(--accent);
+    }
+    .toast.error  { border-left-color: var(--danger); }
+    .toast.success{ border-left-color: var(--success); }
+    .toast.warning{ border-left-color: var(--warning); }
+    @keyframes slideInRight {
+      from { transform: translateX(120%); opacity: 0; }
+      to   { transform: translateX(0);   opacity: 1; }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       MODAL
+    ═══════════════════════════════════════════════════ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--glass-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 32px;
+      min-width: 460px;
+      max-width: 580px;
+      width: 90%;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      animation: modalIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes modalIn {
+      from { transform: scale(0.96) translateY(10px); opacity: 0; }
+      to   { transform: scale(1)    translateY(0);    opacity: 1; }
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .modal-header h3 { font-size: 18px; font-weight: 700; }
+    .modal-close {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.06);
+      border: none;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--transition);
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+    .modal-footer { margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ═══════════════════════════════════════════════════
+       SETTINGS SECTIONS
+    ═══════════════════════════════════════════════════ */
+    .settings-section { margin-bottom: 24px; }
+    .settings-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(56,189,248,0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Divider */
+    .divider { height: 1px; background: var(--glass-border); margin: 20px 0; }
+
+    /* Copy button */
+    .copy-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      background: rgba(56,189,248,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(56,189,248,0.2);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: inherit;
+      font-weight: 600;
+    }
+    .copy-btn:hover { background: rgba(56,189,248,0.2); }
+
+    /* Search bar */
+    .search-wrap { position: relative; }
+    .search-wrap input { padding-left: 38px; }
+    .search-icon {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    /* Receipt link */
+    .receipt-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 12px;
+    }
+    .receipt-link:hover { text-decoration: underline; }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVE GRID HELPERS
+    ═══════════════════════════════════════════════════ */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .mb-6  { margin-bottom: 6px; }
+    .mb-16 { margin-bottom: 16px; }
+    .mb-24 { margin-bottom: 24px; }
+    .mt-16 { margin-top: 16px; }
+    .flex  { display: flex; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .gap-8 { gap: 8px; }
+    .gap-12 { gap: 12px; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════ SLIDESHOW ═══════════ -->
+  <div id="slideshow">
+    <div class="slide active"></div>
+    <div class="slide"></div>
+    <div class="slide"></div>
+    <div class="slide"></div>
+    <div class="slide"></div>
+  </div>
+
+  <!-- ═══════════ APP SHELL ═══════════ -->
+  <div id="app">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar">
+      <div class="sidebar-logo">
+        <div class="brand">
+          <div class="brand-icon">🏠</div>
+          <div class="brand-text">
+            <h1 id="sb-prop-name">Haven Stays</h1>
+            <span>Property Management</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tunnel Status -->
+      <div class="sidebar-tunnel">
+        <div class="tunnel-label">
+          <span class="tunnel-dot" id="tunnel-dot"></span>
+          <span>Webhook Tunnel</span>
+        </div>
+        <a class="tunnel-url" id="tunnel-url-display" onclick="copyTunnelUrl()" title="Click to copy">
+          Connecting…
+        </a>
+      </div>
+
+      <nav>
+        <div class="nav-section-label">Overview</div>
+        <div class="nav-item active" onclick="switchTab('dashboard', this)">
+          <span class="nav-icon">📊</span> Dashboard
+        </div>
+
+        <div class="nav-section-label">Management</div>
+        <div class="nav-item" onclick="switchTab('tenants', this)">
+          <span class="nav-icon">👤</span> Tenants
+          <span class="nav-badge" id="badge-tenants">0</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('payments', this)">
+          <span class="nav-icon">💳</span> Payments
+          <span class="nav-badge" id="badge-payments">0</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('receipts', this)">
+          <span class="nav-icon">🧾</span> Receipts
+        </div>
+
+        <div class="nav-section-label">Configuration</div>
+        <div class="nav-item" onclick="switchTab('settings', this)">
+          <span class="nav-icon">⚙️</span> Settings
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="dev-badge">
+          <div class="dev-badge-title">
+            <span>Haven Stays v1.0</span>
+            <span style="color:#10b981;font-weight:600;">● Online</span>
+          </div>
+          <a href="https://wa.me/254798792730" target="_blank" rel="noopener noreferrer" class="dev-badge-link" title="Contact READON ADOLA DEVs on WhatsApp">
+            <div class="dev-brand-line">
+              <span class="dev-pulse-dot"></span>
+              <span>Engineered by <strong>READON ADOLA DEVs</strong></span>
+            </div>
+            <div class="dev-support-line">
+              <span>💬 Support: +254 798 792 730</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div id="main">
+      <div id="topbar">
+        <div class="page-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-actions">
+          <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+          <button class="btn btn-primary btn-sm" onclick="openCheckinModal()">+ Check In Tenant</button>
+        </div>
+      </div>
+
+      <div id="content">
+
+        <!-- ═══════ DASHBOARD ═══════ -->
+        <div class="tab-panel active" id="panel-dashboard">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon-bg">👤</div>
+              <div class="stat-label">Total Tenants</div>
+              <div class="stat-value" id="stat-total-tenants">—</div>
+              <div class="stat-sub" id="stat-active-tenants">— active</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon-bg">💳</div>
+              <div class="stat-label">Total Payments</div>
+              <div class="stat-value accent" id="stat-total-payments">—</div>
+              <div class="stat-sub">Transactions recorded</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon-bg">💰</div>
+              <div class="stat-label">Revenue Collected</div>
+              <div class="stat-value success" id="stat-revenue">—</div>
+              <div class="stat-sub">KES total</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon-bg">🧾</div>
+              <div class="stat-label">Receipts Generated</div>
+              <div class="stat-value" id="stat-receipts">—</div>
+              <div class="stat-sub">PDF documents</div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <!-- Webhook URL card -->
+            <div class="glass-card">
+              <div class="card-header">
+                <h2><span class="card-icon">🌐</span> Live Webhook URL</h2>
+                <button class="copy-btn" onclick="copyTunnelUrl()">📋 Copy</button>
+              </div>
+              <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">
+                Share this URL with your payment gateway to receive real-time payment callbacks.
+              </div>
+              <code style="
+                display: block;
+                background: rgba(0,0,0,0.3);
+                border: 1px solid var(--glass-border);
+                border-radius: 8px;
+                padding: 12px 14px;
+                font-size: 12px;
+                color: var(--accent);
+                word-break: break-all;
+                line-height: 1.5;
+              " id="dashboard-webhook-url">—</code>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="glass-card">
+              <div class="card-header">
+                <h2><span class="card-icon">⚡</span> Quick Actions</h2>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <button class="btn btn-primary" onclick="openCheckinModal()" style="justify-content:center;">
+                  👤 Check In New Tenant
+                </button>
+                <button class="btn btn-ghost" onclick="openManualPaymentModal()" style="justify-content:center;">
+                  💳 Record Manual Payment
+                </button>
+                <button class="btn btn-ghost" onclick="switchTab('receipts', null)" style="justify-content:center;">
+                  🧾 View All Receipts
+                </button>
+                <button class="btn btn-ghost" onclick="switchTab('settings', null)" style="justify-content:center;">
+                  ⚙️ Configure Settings
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Payments -->
+          <div class="glass-card" style="margin-top:20px;">
+            <div class="card-header">
+              <h2><span class="card-icon">💳</span> Recent Payments</h2>
+              <button class="btn btn-ghost btn-sm" onclick="switchTab('payments',null)">View All →</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Tenant</th><th>Unit</th><th>Amount</th><th>Channel</th><th>Reference</th><th>Date</th>
+                </tr></thead>
+                <tbody id="recent-payments-tbody">
+                  <tr><td colspan="6" class="empty-state"><div class="empty-icon">💳</div><p>No payments yet</p></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ TENANTS ═══════ -->
+        <div class="tab-panel" id="panel-tenants">
+          <div class="glass-card mb-24">
+            <div class="card-header">
+              <h2><span class="card-icon">👤</span> Tenant Registry</h2>
+              <div class="flex gap-8">
+                <div class="search-wrap">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" id="tenant-search" placeholder="Search tenants…" oninput="filterTenants()" style="width:220px;" />
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="openCheckinModal()">+ Check In</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Name</th><th>Unit</th><th>Phone</th><th>Monthly Rent</th><th>Status</th><th>Move-In</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="tenants-tbody">
+                  <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👤</div><p>No tenants registered</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ PAYMENTS ═══════ -->
+        <div class="tab-panel" id="panel-payments">
+          <div class="glass-card mb-24">
+            <div class="card-header">
+              <h2><span class="card-icon">💳</span> Payment Ledger</h2>
+              <button class="btn btn-primary btn-sm" onclick="openManualPaymentModal()">+ Manual Entry</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Tenant</th><th>Unit</th><th>Amount (KES)</th><th>Channel</th><th>Reference</th><th>Date</th><th>Action</th>
+                </tr></thead>
+                <tbody id="payments-tbody">
+                  <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💳</div><p>No payments recorded</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ RECEIPTS ═══════ -->
+        <div class="tab-panel" id="panel-receipts">
+          <div class="glass-card mb-24">
+            <div class="card-header">
+              <h2><span class="card-icon">🧾</span> Receipt Archive</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Receipt #</th><th>Tenant</th><th>Unit</th><th>WhatsApp</th><th>Generated</th><th>Download</th><th>Action</th>
+                </tr></thead>
+                <tbody id="receipts-tbody">
+                  <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🧾</div><p>No receipts generated yet</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══════ SETTINGS ═══════ -->
+        <div class="tab-panel" id="panel-settings">
+          <div class="grid-2" style="align-items:start;">
+
+            <!-- LEFT COLUMN -->
+            <div style="display:flex;flex-direction:column;gap:20px;">
+
+              <!-- Property Info -->
+              <div class="glass-card">
+                <div class="card-header">
+                  <h2><span class="card-icon">🏠</span> Property Information</h2>
+                </div>
+                <div class="settings-section">
+                  <div class="form-grid single">
+                    <div class="form-group">
+                      <label>Property Name</label>
+                      <input type="text" id="s-property_name" placeholder="Haven Stays" />
+                    </div>
+                    <div class="form-group">
+                      <label>Business Address</label>
+                      <input type="text" id="s-property_address" placeholder="123 Main St, Nairobi" />
+                    </div>
+                    <div class="form-group">
+                      <label>Contact Phone</label>
+                      <input type="tel" id="s-property_phone" placeholder="+254700000000" />
+                    </div>
+                    <div class="form-group">
+                      <label>Receipt Logo Path (local file path)</label>
+                      <input type="text" id="s-receipt_logo_path" placeholder="/path/to/logo.png" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- M-Pesa -->
+              <div class="glass-card">
+                <div class="card-header">
+                  <h2><span class="card-icon">📱</span> M-Pesa Daraja API</h2>
+                </div>
+                <div class="form-grid single">
+                  <div class="form-group">
+                    <label>Consumer Key</label>
+                    <input type="text" id="s-mpesa_consumer_key" placeholder="Your Consumer Key" />
+                  </div>
+                  <div class="form-group">
+                    <label>Consumer Secret</label>
+                    <input type="password" id="s-mpesa_consumer_secret" placeholder="••••••••" />
+                  </div>
+                  <div class="form-group">
+                    <label>Passkey</label>
+                    <input type="password" id="s-mpesa_passkey" placeholder="••••••••" />
+                  </div>
+                  <div class="form-group">
+                    <label>Shortcode / Paybill</label>
+                    <input type="text" id="s-mpesa_shortcode" placeholder="174379" />
+                  </div>
+                  <div class="form-group">
+                    <label>Webhook Verification Token</label>
+                    <input type="text" id="s-mpesa_webhook_token" placeholder="Optional token" />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div style="display:flex;flex-direction:column;gap:20px;">
+
+              <!-- WhatsApp -->
+              <div class="glass-card">
+                <div class="card-header">
+                  <h2><span class="card-icon">💬</span> WhatsApp Delivery</h2>
+                </div>
+                <div class="form-group mb-16">
+                  <label>Delivery Mode</label>
+                  <select id="s-whatsapp_mode" onchange="toggleWhatsAppMode()">
+                    <option value="api">Official API (Twilio)</option>
+                    <option value="local">Local Web Client (QR)</option>
+                  </select>
+                </div>
+                <div id="wa-api-fields" class="form-grid single">
+                  <div class="form-group">
+                    <label>Account SID</label>
+                    <input type="text" id="s-whatsapp_sid" placeholder="ACxxxxxxxxxxxxxxxx" />
+                  </div>
+                  <div class="form-group">
+                    <label>Auth Token</label>
+                    <input type="password" id="s-whatsapp_auth_token" placeholder="••••••••" />
+                  </div>
+                  <div class="form-group">
+                    <label>Sender Number (WhatsApp Business)</label>
+                    <input type="tel" id="s-whatsapp_sender" placeholder="+14155238886" />
+                  </div>
+                </div>
+                <div id="wa-local-fields" style="display:none;padding:12px 0;">
+                  <div style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.25);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--success);display:flex;align-items:center;gap:8px;">
+                    <span>🛡️</span>
+                    <div><strong>100% Free Forever</strong> · Zero third-party fees, zero browser popups. Receipts send silently in the background.</div>
+                  </div>
+
+                  <!-- Connected State -->
+                  <div id="wa-connected-state" style="display:none;background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.3);border-radius:12px;padding:16px;text-align:center;margin-bottom:14px;">
+                    <div style="font-size:20px;margin-bottom:4px;">🟢</div>
+                    <div style="font-weight:700;color:var(--text-primary);font-size:14px;">WhatsApp Connected</div>
+                    <div id="wa-connected-user" style="font-size:12px;color:var(--accent);margin:4px 0 8px;"></div>
+                    <div style="font-size:12px;color:var(--text-muted);">Receipts will send automatically in the background. No browser windows will open.</div>
+                  </div>
+
+                  <!-- QR Pairing State -->
+                  <div id="wa-pairing-state" style="text-align:center;padding:6px 0 14px;">
+                    <div id="wa-qr-box" style="
+                      width: 210px; height: 210px; margin: 0 auto 12px;
+                      background: white; border-radius: 12px;
+                      display:flex; align-items:center; justify-content:center;
+                      box-shadow: 0 4px 20px rgba(0,0,0,0.4); overflow: hidden;
+                    ">
+                      <img id="wa-qr-img" style="width:200px;height:200px;display:none;" alt="WhatsApp QR Code" />
+                      <div id="wa-qr-placeholder" style="font-size:12px;color:#555;padding:16px;text-align:center;">
+                        🔄 Loading pairing QR code…
+                      </div>
+                    </div>
+
+                    <div style="font-size:12px;color:var(--text-muted);line-height:1.6;text-align:left;background:rgba(0,0,0,0.25);padding:12px 16px;border-radius:8px;border:1px solid var(--glass-border);margin-bottom:12px;">
+                      <div style="font-weight:700;color:var(--text-primary);margin-bottom:6px;">📱 Scan with WhatsApp on Landlord Phone:</div>
+                      <div>1. Open <strong>WhatsApp</strong> on phone → <strong>Settings / Three Dots</strong>.</div>
+                      <div>2. Tap <strong>Linked Devices</strong> → <strong>Link a Device</strong>.</div>
+                      <div>3. Point camera at the QR code above. Connected in 3 seconds!</div>
+                    </div>
+                  </div>
+
+                  <!-- Test message section -->
+                  <div style="border-top:1px solid var(--glass-border);padding-top:14px;margin-top:6px;">
+                    <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:6px;">Test Your WhatsApp Connection</label>
+                    <div class="flex gap-8">
+                      <input type="tel" id="wa-test-phone" placeholder="Your phone e.g. 07XXXXXXXX" style="font-size:13px;" />
+                      <button type="button" class="btn btn-ghost btn-sm" onclick="sendWhatsAppTest()">🧪 Send Test</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tunnel -->
+              <div class="glass-card">
+                <div class="card-header">
+                  <h2><span class="card-icon">🌐</span> Tunneling (ngrok)</h2>
+                </div>
+                <div class="form-grid single">
+                  <div class="form-group">
+                    <label>ngrok Auth Token</label>
+                    <input type="password" id="s-ngrok_auth_token" placeholder="Your ngrok authtoken" />
+                  </div>
+                  <div class="form-group">
+                    <label>Active Webhook URL</label>
+                    <div class="flex gap-8" style="align-items:center;">
+                      <input type="text" id="s-tunnel-display" readonly
+                             style="color:var(--accent);background:rgba(56,189,248,0.05);"
+                             placeholder="Tunnel not active" />
+                      <button class="copy-btn" onclick="copyTunnelUrl()">📋</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Save button -->
+              <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;justify-content:center;padding:14px;">
+                💾 Save All Settings
+              </button>
+
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- /content -->
+    </div> <!-- /main -->
+  </div> <!-- /app -->
+
+  <!-- ═══════════ MODALS ═══════════ -->
+
+  <!-- CHECK-IN MODAL -->
+  <div class="modal-overlay" id="modal-checkin">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👤 Tenant Check-In</h3>
+        <button class="modal-close" onclick="closeModal('modal-checkin')">✕</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="ci-name" placeholder="John Doe" />
+        </div>
+        <div class="form-group">
+          <label>Phone Number *</label>
+          <input type="tel" id="ci-phone" placeholder="+254712345678" />
+        </div>
+        <div class="form-group">
+          <label>Unit Number *</label>
+          <input type="text" id="ci-unit" placeholder="A-101" />
+        </div>
+        <div class="form-group">
+          <label>Monthly Rent (KES) *</label>
+          <input type="number" id="ci-rent" placeholder="25000" min="0" />
+        </div>
+        <div class="form-group span-2">
+          <label>Move-In Date</label>
+          <input type="datetime-local" id="ci-movein" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-checkin')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCheckin()">✅ Check In Tenant</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MANUAL PAYMENT MODAL -->
+  <div class="modal-overlay" id="modal-payment">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>💳 Record Manual Payment</h3>
+        <button class="modal-close" onclick="closeModal('modal-payment')">✕</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label>Tenant *</label>
+          <select id="mp-tenant">
+            <option value="">— Select active tenant —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount Paid (KES) *</label>
+          <input type="number" id="mp-amount" placeholder="25000" min="1" />
+        </div>
+        <div class="form-group">
+          <label>Payment Channel *</label>
+          <select id="mp-channel">
+            <option value="M-Pesa">M-Pesa</option>
+            <option value="Cash">Cash</option>
+            <option value="Bank Transfer">Bank Transfer</option>
+            <option value="Paystack">Paystack</option>
+            <option value="Flutterwave">Flutterwave</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group span-2">
+          <label>Transaction Reference *</label>
+          <input type="text" id="mp-ref" placeholder="MPESA1234ABC" />
+        </div>
+        <div class="form-group span-2">
+          <label>Payment Date</label>
+          <input type="datetime-local" id="mp-date" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-payment')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitManualPayment()">💾 Record Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHECKOUT CONFIRM MODAL -->
+  <div class="modal-overlay" id="modal-checkout">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🚪 Confirm Check-Out</h3>
+        <button class="modal-close" onclick="closeModal('modal-checkout')">✕</button>
+      </div>
+      <p style="color:var(--text-muted);font-size:14px;line-height:1.6;">
+        Are you sure you want to check out <strong id="co-name" style="color:var(--text-primary)"></strong>?
+        Their status will be set to <em>LOGGED_OUT</em> and they will no longer receive payment auto-matching.
+      </p>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-checkout')">Cancel</button>
+        <button class="btn btn-danger" id="co-confirm-btn" onclick="confirmCheckout()">🚪 Check Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="modal-delete">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="del-modal-title">🗑️ Confirm Deletion</h3>
+        <button class="modal-close" onclick="closeModal('modal-delete')">✕</button>
+      </div>
+      <p style="color:var(--text-muted);font-size:14px;line-height:1.6;" id="del-modal-desc">
+        Are you sure you want to delete this permanently? This action cannot be undone.
+      </p>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-delete')">Cancel</button>
+        <button class="btn btn-danger" id="del-confirm-btn" onclick="confirmDeleteAction()">🗑️ Delete Permanently</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
+  <!-- ═══════════ JAVASCRIPT ═══════════ -->
+  <script>
+    /* ────────────────────────────────────────────────
+       BACKGROUND SLIDESHOW (Smooth cross-fade blending)
+    ──────────────────────────────────────────────── */
+    (function() {
+      const slides = document.querySelectorAll('.slide');
+      let current = 0;
+      setInterval(() => {
+        slides[current].classList.remove('active');
+        current = (current + 1) % slides.length;
+        slides[current].classList.add('active');
+      }, 6000);
+    })();
+
+    /* ────────────────────────────────────────────────
+       TOAST SYSTEM
+    ──────────────────────────────────────────────── */
+    function toast(msg, type = 'info', duration = 4000) {
+      const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(120%)'; el.style.transition = '0.4s'; setTimeout(() => el.remove(), 400); }, duration);
+    }
+
+    /* ────────────────────────────────────────────────
+       TAB NAVIGATION
+    ──────────────────────────────────────────────── */
+    const tabTitles = {
+      dashboard: 'Dashboard',
+      tenants:   'Tenant Registry',
+      payments:  'Payment Ledger',
+      receipts:  'Receipt Archive',
+      settings:  'Settings & Configuration',
+    };
+
+    function switchTab(tab, el) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('panel-' + tab).classList.add('active');
+      document.getElementById('topbar-title').textContent = tabTitles[tab] || tab;
+      if (el) el.classList.add('active');
+      else {
+        document.querySelectorAll('.nav-item').forEach(n => {
+          if (n.textContent.toLowerCase().includes(tab.replace('-',' '))) n.classList.add('active');
+        });
+      }
+      // Lazy-load panel data
+      if (tab === 'dashboard') loadDashboard();
+      if (tab === 'tenants')   loadTenants();
+      if (tab === 'payments')  loadPayments();
+      if (tab === 'receipts')  loadReceipts();
+      if (tab === 'settings')  loadSettings();
+    }
+
+    /* ────────────────────────────────────────────────
+       API HELPERS
+    ──────────────────────────────────────────────── */
+    async function api(path, method = 'GET', body = null) {
+      const opts = { method, headers: { 'Content-Type': 'application/json' } };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch('/api/v1' + path, opts);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    /* ────────────────────────────────────────────────
+       DASHBOARD
+    ──────────────────────────────────────────────── */
+    async function loadDashboard() {
+      try {
+        const d = await api('/dashboard');
+        document.getElementById('stat-total-tenants').textContent = d.total_tenants;
+        document.getElementById('stat-active-tenants').textContent = `${d.active_tenants} active`;
+        document.getElementById('stat-total-payments').textContent = d.total_payments;
+        document.getElementById('stat-revenue').textContent = `KES ${Number(d.total_collected).toLocaleString('en-KE', {minimumFractionDigits:2})}`;
+        document.getElementById('stat-receipts').textContent = d.total_receipts;
+        document.getElementById('badge-tenants').textContent = d.active_tenants;
+        document.getElementById('badge-payments').textContent = d.total_payments;
+
+        const wh = d.tunnel_url ? `${d.tunnel_url}/api/v1/payments/webhook` : 'Tunnel not connected';
+        document.getElementById('dashboard-webhook-url').textContent = wh;
+        updateTunnelStatus(d.tunnel_url);
+
+        // Load recent payments
+        const payments = await api('/payments');
+        const tbody = document.getElementById('recent-payments-tbody');
+        if (!payments.length) {
+          tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">💳</div><p>No payments yet</p></div></td></tr>`;
+        } else {
+          tbody.innerHTML = payments.slice(0, 8).map(p => `
+            <tr>
+              <td><strong>${p.full_name || '—'}</strong></td>
+              <td class="muted">${p.unit_number || '—'}</td>
+              <td style="color:var(--success);font-weight:700;">KES ${Number(p.amount_paid).toLocaleString()}</td>
+              <td class="muted">${p.payment_channel}</td>
+              <td class="muted" style="font-family:monospace;font-size:11px;">${p.transaction_reference}</td>
+              <td class="muted">${fmtDate(p.payment_date)}</td>
+            </tr>`).join('');
+        }
+      } catch (e) { toast('Dashboard load failed: ' + e.message, 'error'); }
+    }
+
+    function updateTunnelStatus(url) {
+      const dot = document.getElementById('tunnel-dot');
+      const display = document.getElementById('tunnel-url-display');
+      const sDisplay = document.getElementById('s-tunnel-display');
+      if (url) {
+        dot.classList.add('active');
+        const wh = `${url}/api/v1/payments/webhook`;
+        display.textContent = wh;
+        if (sDisplay) sDisplay.value = wh;
+      } else {
+        dot.classList.remove('active');
+        display.textContent = 'Not connected';
+        if (sDisplay) sDisplay.value = '';
+      }
+    }
+
+    /* ────────────────────────────────────────────────
+       TENANTS
+    ──────────────────────────────────────────────── */
+    let _tenants = [];
+    async function loadTenants() {
+      try {
+        _tenants = await api('/tenants');
+        renderTenants(_tenants);
+      } catch (e) { toast('Could not load tenants: ' + e.message, 'error'); }
+    }
+
+    function renderTenants(list) {
+      const tbody = document.getElementById('tenants-tbody');
+      if (!list.length) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👤</div><p>No tenants yet. Click "Check In" to add one.</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = list.map(t => `
+        <tr>
+          <td><strong>${t.full_name}</strong></td>
+          <td class="muted">${t.unit_number}</td>
+          <td class="muted">${t.phone_number}</td>
+          <td style="font-weight:600;">KES ${Number(t.monthly_rent).toLocaleString()}</td>
+          <td>${t.status === 'LOGGED_IN'
+            ? '<span class="badge badge-active">Active</span>'
+            : '<span class="badge badge-inactive">Checked Out</span>'}</td>
+          <td class="muted">${fmtDate(t.move_in_date)}</td>
+          <td>
+            <div class="flex gap-8">
+              ${t.status === 'LOGGED_IN'
+                ? `<button class="btn btn-danger btn-sm" onclick="openCheckoutModal(${t.id},'${escHtml(t.full_name)}')">🚪 Check Out</button>`
+                : `<button class="btn btn-success btn-sm" onclick="reactivateTenant(${t.id})">↩ Re-Activate</button>`}
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal('tenant',${t.id},'${escHtml(t.full_name)}')">🗑 Delete</button>
+            </div>
+          </td>
+        </tr>`).join('');
+    }
+
+    function filterTenants() {
+      const q = document.getElementById('tenant-search').value.toLowerCase();
+      renderTenants(_tenants.filter(t =>
+        t.full_name.toLowerCase().includes(q) ||
+        t.phone_number.includes(q) ||
+        t.unit_number.toLowerCase().includes(q)
+      ));
+    }
+
+    /* ────────────────────────────────────────────────
+       PAYMENTS
+    ──────────────────────────────────────────────── */
+    async function loadPayments() {
+      try {
+        const payments = await api('/payments');
+        const tbody = document.getElementById('payments-tbody');
+        if (!payments.length) {
+          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💳</div><p>No payments recorded yet</p></div></td></tr>`;
+          return;
+        }
+        tbody.innerHTML = payments.map(p => `
+          <tr>
+            <td><strong>${p.full_name || '—'}</strong></td>
+            <td class="muted">${p.unit_number || '—'}</td>
+            <td style="color:var(--success);font-weight:700;">KES ${Number(p.amount_paid).toLocaleString('en-KE',{minimumFractionDigits:2})}</td>
+            <td><span class="badge badge-active">${p.payment_channel}</span></td>
+            <td class="muted" style="font-family:monospace;font-size:11px;">${p.transaction_reference}</td>
+            <td class="muted">${fmtDate(p.payment_date)}</td>
+            <td>
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal('payment',${p.id},'${escHtml(p.transaction_reference)}')">🗑 Delete</button>
+            </td>
+          </tr>`).join('');
+      } catch (e) { toast('Could not load payments: ' + e.message, 'error'); }
+    }
+
+    /* ────────────────────────────────────────────────
+       RECEIPTS
+    ──────────────────────────────────────────────── */
+    async function loadReceipts() {
+      try {
+        const receipts = await api('/receipts');
+        const tbody = document.getElementById('receipts-tbody');
+        if (!receipts.length) {
+          tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🧾</div><p>No receipts generated yet</p></div></td></tr>`;
+          return;
+        }
+        tbody.innerHTML = receipts.map(r => {
+          const waClass = {SENT:'badge-sent',FAILED:'badge-failed',PENDING:'badge-pending',QUEUED:'badge-pending'}[r.whatsapp_status] || 'badge-inactive';
+          return `<tr>
+            <td style="font-family:monospace;font-size:12px;color:var(--accent);">${r.receipt_number}</td>
+            <td><strong>${r.full_name || '—'}</strong></td>
+            <td class="muted">${r.unit_number || '—'}</td>
+            <td><span class="badge ${waClass}">${r.whatsapp_status}</span></td>
+            <td class="muted">${fmtDate(r.generated_at)}</td>
+            <td><a class="receipt-link" href="/storage/receipts/${r.receipt_number}.pdf" target="_blank">📄 Open</a></td>
+            <td>
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal('receipt',${r.id},'${escHtml(r.receipt_number)}')">🗑 Delete</button>
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (e) { toast('Could not load receipts: ' + e.message, 'error'); }
+    }
+
+    /* ────────────────────────────────────────────────
+       SETTINGS
+    ──────────────────────────────────────────────── */
+    async function loadSettings() {
+      try {
+        const s = await api('/settings');
+        const fields = ['property_name','property_address','property_phone','receipt_logo_path',
+          'mpesa_consumer_key','mpesa_consumer_secret','mpesa_passkey','mpesa_shortcode','mpesa_webhook_token',
+          'whatsapp_mode','whatsapp_sid','whatsapp_auth_token','whatsapp_sender','ngrok_auth_token'];
+        fields.forEach(f => {
+          const el = document.getElementById('s-' + f);
+          if (el) el.value = s[f] || '';
+        });
+        // Update tunnel display
+        if (s.tunnel_url) {
+          const wh = `${s.tunnel_url}/api/v1/payments/webhook`;
+          const disp = document.getElementById('s-tunnel-display');
+          if (disp) disp.value = wh;
+        }
+        toggleWhatsAppMode();
+        // Update sidebar brand name
+        if (s.property_name) {
+          document.getElementById('sb-prop-name').textContent = s.property_name;
+        }
+      } catch (e) { toast('Could not load settings: ' + e.message, 'error'); }
+    }
+
+    let _waPollTimer = null;
+    async function pollWhatsAppStatus() {
+      try {
+        const res = await api('/whatsapp/status');
+        const connectedBox = document.getElementById('wa-connected-state');
+        const pairingBox = document.getElementById('wa-pairing-state');
+        const qrImg = document.getElementById('wa-qr-img');
+        const qrPlaceholder = document.getElementById('wa-qr-placeholder');
+        const userDisplay = document.getElementById('wa-connected-user');
+
+        if (res.connected) {
+          if (connectedBox) connectedBox.style.display = 'block';
+          if (pairingBox) pairingBox.style.display = 'none';
+          if (userDisplay) userDisplay.textContent = res.user ? `Phone: +${res.user.split('@')[0].split(':')[0]}` : 'Active & Ready';
+        } else {
+          if (connectedBox) connectedBox.style.display = 'none';
+          if (pairingBox) pairingBox.style.display = 'block';
+          if (res.qr) {
+            if (qrImg) {
+              qrImg.src = res.qr;
+              qrImg.style.display = 'block';
+            }
+            if (qrPlaceholder) qrPlaceholder.style.display = 'none';
+          } else {
+            if (qrImg) qrImg.style.display = 'none';
+            if (qrPlaceholder) {
+              qrPlaceholder.style.display = 'block';
+              qrPlaceholder.textContent = '🔄 Generating pairing QR code…';
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    function toggleWhatsAppMode() {
+      const mode = document.getElementById('s-whatsapp_mode').value;
+      document.getElementById('wa-api-fields').style.display   = mode === 'api'   ? '' : 'none';
+      document.getElementById('wa-local-fields').style.display = mode === 'local' ? '' : 'none';
+      if (mode === 'local') {
+        pollWhatsAppStatus();
+        if (!_waPollTimer) {
+          _waPollTimer = setInterval(pollWhatsAppStatus, 3000);
+        }
+      } else {
+        if (_waPollTimer) {
+          clearInterval(_waPollTimer);
+          _waPollTimer = null;
+        }
+      }
+    }
+
+    async function saveSettings() {
+      try {
+        const fields = ['property_name','property_address','property_phone','receipt_logo_path',
+          'mpesa_consumer_key','mpesa_consumer_secret','mpesa_passkey','mpesa_shortcode','mpesa_webhook_token',
+          'whatsapp_mode','whatsapp_sid','whatsapp_auth_token','whatsapp_sender','ngrok_auth_token'];
+        const payload = {};
+        fields.forEach(f => {
+          const el = document.getElementById('s-' + f);
+          if (el) payload[f] = el.value;
+        });
+        await api('/settings', 'POST', payload);
+        toast('Settings saved successfully!', 'success');
+        // Update brand name live
+        if (payload.property_name)
+          document.getElementById('sb-prop-name').textContent = payload.property_name;
+        // Refresh tunnel status
+        setTimeout(pollTunnelStatus, 3000);
+      } catch (e) { toast('Save failed: ' + e.message, 'error'); }
+    }
+
+    /* ────────────────────────────────────────────────
+       TUNNEL POLLING
+    ──────────────────────────────────────────────── */
+    async function pollTunnelStatus() {
+      try {
+        const d = await api('/tunnel/status');
+        updateTunnelStatus(d.url);
+        const wh = document.getElementById('dashboard-webhook-url');
+        if (wh) wh.textContent = d.webhook_url || 'Tunnel not connected';
+      } catch (e) { /* silent */ }
+    }
+    // Poll every 5 seconds for tunnel status
+    setInterval(pollTunnelStatus, 5000);
+
+    function copyTunnelUrl() {
+      const el = document.getElementById('tunnel-url-display');
+      const url = el ? el.textContent : '';
+      if (!url || url === 'Not connected' || url === 'Connecting…') {
+        toast('No tunnel URL available yet.', 'warning');
+        return;
+      }
+      navigator.clipboard.writeText(url).then(() => toast('Webhook URL copied!', 'success'));
+    }
+
+    /* ────────────────────────────────────────────────
+       MODALS
+    ──────────────────────────────────────────────── */
+    function openModal(id)  { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // Close on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(o => {
+      o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+    });
+
+    function openCheckinModal() {
+      ['ci-name','ci-phone','ci-unit','ci-rent','ci-movein'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('ci-movein').value = new Date().toISOString().slice(0,16);
+      openModal('modal-checkin');
+    }
+
+    async function submitCheckin() {
+      const name  = document.getElementById('ci-name').value.trim();
+      const phone = document.getElementById('ci-phone').value.trim();
+      const unit  = document.getElementById('ci-unit').value.trim();
+      const rent  = document.getElementById('ci-rent').value;
+      if (!name || !phone || !unit || !rent) { toast('All starred fields are required.','warning'); return; }
+      try {
+        await api('/tenants', 'POST', {
+          full_name: name, phone_number: phone, unit_number: unit,
+          monthly_rent: parseFloat(rent),
+          move_in_date: document.getElementById('ci-movein').value || null,
+        });
+        toast(`${name} checked in successfully!`, 'success');
+        closeModal('modal-checkin');
+        loadTenants();
+        loadDashboard();
+      } catch (e) { toast('Check-in failed: ' + e.message, 'error'); }
+    }
+
+    async function openManualPaymentModal() {
+      try {
+        const tenants = await api('/tenants');
+        const sel = document.getElementById('mp-tenant');
+        sel.innerHTML = '<option value="">— Select active tenant —</option>';
+        tenants.filter(t => t.status === 'LOGGED_IN').forEach(t => {
+          const o = document.createElement('option');
+          o.value = t.id;
+          o.textContent = `${t.full_name} — Unit ${t.unit_number}`;
+          sel.appendChild(o);
+        });
+        ['mp-amount','mp-ref'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('mp-channel').value = 'M-Pesa';
+        document.getElementById('mp-date').value = new Date().toISOString().slice(0,16);
+        openModal('modal-payment');
+      } catch (e) { toast('Could not load tenants: ' + e.message,'error'); }
+    }
+
+    async function submitManualPayment() {
+      const tid    = document.getElementById('mp-tenant').value;
+      const amount = document.getElementById('mp-amount').value;
+      const ref    = document.getElementById('mp-ref').value.trim();
+      const ch     = document.getElementById('mp-channel').value;
+      if (!tid || !amount || !ref) { toast('Tenant, amount and reference are required.','warning'); return; }
+      try {
+        await api('/payments/manual', 'POST', {
+          tenant_id: parseInt(tid),
+          amount_paid: parseFloat(amount),
+          transaction_reference: ref,
+          payment_channel: ch,
+          payment_date: document.getElementById('mp-date').value || null,
+        });
+        toast('Payment recorded! Receipt being generated…', 'success');
+        closeModal('modal-payment');
+        setTimeout(() => { loadPayments(); loadReceipts(); loadDashboard(); }, 1000);
+      } catch (e) { toast('Payment failed: ' + e.message, 'error'); }
+    }
+
+    let _checkoutId = null;
+    function openCheckoutModal(id, name) {
+      _checkoutId = id;
+      document.getElementById('co-name').textContent = name;
+      openModal('modal-checkout');
+    }
+    async function confirmCheckout() {
+      if (!_checkoutId) return;
+      try {
+        const r = await api(`/tenants/${_checkoutId}/checkout`, 'POST');
+        toast(r.message, 'success');
+        closeModal('modal-checkout');
+        loadTenants();
+        loadDashboard();
+      } catch (e) { toast('Checkout failed: ' + e.message,'error'); }
+    }
+
+    async function reactivateTenant(id) {
+      try {
+        await api(`/tenants/${id}`, 'PUT', { status: 'LOGGED_IN' });
+        toast('Tenant re-activated!', 'success');
+        loadTenants();
+      } catch (e) { toast('Failed: ' + e.message,'error'); }
+    }
+
+    /* ────────────────────────────────────────────────
+       IN-APP DELETION MODAL (PyWebView compatible)
+    ──────────────────────────────────────────────── */
+    let _deleteTarget = { type: null, id: null, label: '' };
+
+    function openDeleteModal(type, id, label) {
+      _deleteTarget = { type, id, label };
+      const titles = {
+        tenant: '👤 Delete Tenant',
+        payment: '💳 Delete Payment Record',
+        receipt: '🧾 Delete Receipt',
+      };
+      const desc = {
+        tenant: `Are you sure you want to permanently delete tenant <strong>"${escHtml(label)}"</strong> and all their historical records?`,
+        payment: `Are you sure you want to permanently delete payment reference <strong>"${escHtml(label)}"</strong>?`,
+        receipt: `Are you sure you want to permanently delete receipt <strong>"${escHtml(label)}"</strong>?`,
+      };
+      document.getElementById('del-modal-title').innerHTML = titles[type] || '🗑️ Confirm Deletion';
+      document.getElementById('del-modal-desc').innerHTML = desc[type] || 'Are you sure you want to delete this permanently?';
+      openModal('modal-delete');
+    }
+
+    async function confirmDeleteAction() {
+      const { type, id, label } = _deleteTarget;
+      if (!type || !id) return;
+      try {
+        if (type === 'tenant') {
+          await api(`/tenants/${id}`, 'DELETE');
+          toast(`Tenant "${label}" deleted successfully.`, 'success');
+          loadTenants();
+          loadDashboard();
+        } else if (type === 'payment') {
+          await api(`/payments/${id}`, 'DELETE');
+          toast(`Payment "${label}" deleted.`, 'success');
+          loadPayments();
+          loadDashboard();
+        } else if (type === 'receipt') {
+          await api(`/receipts/${id}`, 'DELETE');
+          toast(`Receipt "${label}" deleted.`, 'success');
+          loadReceipts();
+          loadDashboard();
+        }
+        closeModal('modal-delete');
+      } catch (e) {
+        toast('Delete failed: ' + e.message, 'error');
+      }
+    }
+
+    /* ────────────────────────────────────────────────
+       LOCAL WHATSAPP PAIRING & TESTING
+    ──────────────────────────────────────────────── */
+    async function openWhatsAppPairing() {
+      try {
+        const r = await api('/whatsapp/pair', 'POST');
+        toast(r.message, 'info', 6000);
+      } catch (e) {
+        toast('Could not open WhatsApp Web: ' + e.message, 'error');
+      }
+    }
+
+    async function sendWhatsAppTest() {
+      const phone = document.getElementById('wa-test-phone').value.trim();
+      if (!phone) {
+        toast('Please enter a phone number to test.', 'warning');
+        return;
+      }
+      toast('Sending test WhatsApp message…', 'info');
+      try {
+        const r = await api('/whatsapp/test', 'POST', { phone });
+        if (r.status === 'SENT' || r.status === 'QUEUED') {
+          toast('✅ Test message sent successfully!', 'success');
+        } else {
+          toast('Status: ' + r.status + '. Check console / settings.', 'warning');
+        }
+      } catch (e) {
+        toast('Test failed: ' + e.message, 'error');
+      }
+    }
+
+    /* ────────────────────────────────────────────────
+       UTILITIES
+    ──────────────────────────────────────────────── */
+    function fmtDate(dt) {
+      if (!dt) return '—';
+      try {
+        const d = new Date(dt.replace(' ','T') + (dt.includes('Z') ? '' : 'Z'));
+        return d.toLocaleDateString('en-KE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      } catch { return dt; }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/'/g,'&apos;').replace(/"/g,'&quot;');
+    }
+
+    /* ────────────────────────────────────────────────
+       INITIALISE
+    ──────────────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+      loadDashboard();
+      // Start polling tunnel immediately
+      pollTunnelStatus();
+    });
+  </script>
+</body>
+</html>

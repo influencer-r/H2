@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.spec
+
+# Node
+node_modules/
+wa_bridge/node_modules/
+npm-debug.log*
+
+# Binaries
+bin/ngrok.exe
+
+# Application Runtime Storage
+storage/receipts/*.pdf
+storage/receipts/*.txt
+!storage/receipts/.gitkeep
+storage/wa_session/*
+!storage/wa_session/.gitkeep
+storage/*.db
+storage/*.db-shm
+storage/*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
