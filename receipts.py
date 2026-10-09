@@ -149,11 +149,27 @@ def build_pdf(
         story = []
 
         # ---- Logo / Header ----
+        resolved_logo = None
         if logo_path and Path(logo_path).exists():
+            resolved_logo = Path(logo_path)
+        else:
+            candidates = [
+                Path(__file__).parent / "static" / "images" / "haven_logo.jpeg",
+                Path(__file__).parent / "storage" / "assets" / "haven_logo.jpeg",
+                Path("/app/static/images/haven_logo.jpeg"),
+                Path("/app/storage/assets/haven_logo.jpeg"),
+            ]
+            for c in candidates:
+                if c.exists():
+                    resolved_logo = c
+                    break
+
+        if resolved_logo:
             try:
-                story.append(Image(logo_path, width=4 * cm, height=2 * cm))
-            except Exception:
-                pass
+                story.append(Image(str(resolved_logo), width=4 * cm, height=2.2 * cm))
+                story.append(Spacer(1, 0.2 * cm))
+            except Exception as e:
+                log.warning("Could not render logo in PDF: %s", e)
 
         story.append(Paragraph(property_name, title_style))
         story.append(Paragraph(property_address, subtitle_style))
