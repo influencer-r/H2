@@ -271,6 +271,10 @@
       flex: 1;
       display: flex;
       flex-direction: column;
+      height: 100vh;
+      max-height: 100vh;
+      min-height: 0;
+      min-width: 0;
       overflow: hidden;
     }
 
@@ -286,6 +290,7 @@
       align-items: center;
       padding: 0 28px;
       gap: 16px;
+      flex-shrink: 0;
     }
     #topbar .page-title {
       font-size: 20px;
@@ -297,15 +302,22 @@
     /* CONTENT PANELS */
     #content {
       flex: 1;
+      height: calc(100vh - 64px);
+      max-height: calc(100vh - 64px);
+      min-height: 0;
       overflow-y: auto;
-      padding: 24px;
+      overflow-x: hidden;
+      padding: 24px 24px 80px 24px;
       scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,0.1) transparent;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
+      -webkit-overflow-scrolling: touch;
     }
-    #content::-webkit-scrollbar { width: 6px; }
-    #content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+    #content::-webkit-scrollbar { width: 8px; }
+    #content::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); }
+    #content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+    #content::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
 
-    .tab-panel { display: none; animation: fadeUp 0.3s ease; }
+    .tab-panel { display: none; animation: fadeUp 0.3s ease; padding-bottom: 40px; }
     .tab-panel.active { display: block; }
 
     @keyframes fadeUp {
@@ -733,6 +745,9 @@
        RESPONSIVE GRID HELPERS
     ═══════════════════════════════════════════════════ */
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 1024px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
     .mb-6  { margin-bottom: 6px; }
     .mb-16 { margin-bottom: 16px; }
