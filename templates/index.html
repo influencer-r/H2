@@ -141,36 +141,6 @@
     .brand-text h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
     .brand-text span { font-size: 11px; color: var(--text-muted); font-weight: 400; }
 
-    .sidebar-tunnel {
-      margin: 16px;
-      padding: 12px 14px;
-      background: rgba(56, 189, 248, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: var(--radius-sm);
-      font-size: 11px;
-    }
-    .sidebar-tunnel .tunnel-label {
-      color: var(--text-muted);
-      margin-bottom: 5px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .tunnel-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--text-dim);
-      transition: var(--transition);
-    }
-    .tunnel-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
-    .tunnel-url {
-      color: var(--accent);
-      font-size: 10px;
-      word-break: break-all;
-      line-height: 1.4;
-      cursor: pointer;
-      display: block;
-    }
-    .tunnel-url:hover { text-decoration: underline; }
-
     nav { flex: 1; padding: 12px 0; overflow-y: auto; }
     .nav-section-label {
       font-size: 10px;
@@ -285,6 +255,14 @@
     .dev-support-line:hover {
       color: #38bdf8;
     }
+
+    /* ─── PAYMENT STATUS BADGES ─────────────────────── */
+    .badge-paid      { background:rgba(52,211,153,0.12);  color:#34d399; border:1px solid rgba(52,211,153,0.25); }
+    .badge-due-soon  { background:rgba(251,191,36,0.10);  color:#fbbf24; border:1px solid rgba(251,191,36,0.25); }
+    .badge-due-today { background:rgba(249,115,22,0.12);  color:#f97316; border:1px solid rgba(249,115,22,0.30); }
+    .badge-overdue   { background:rgba(248,113,113,0.12); color:#f87171; border:1px solid rgba(248,113,113,0.30); }
+    .badge-defaulting{ background:rgba(220,38,38,0.18);   color:#ef4444; border:1px solid rgba(220,38,38,0.45); font-weight:700; letter-spacing:.3px; }
+    .badge-checked-out{ background:rgba(100,116,139,0.12); color:#94a3b8; border:1px solid rgba(100,116,139,0.20); }
 
     /* ═══════════════════════════════════════════════════
        MAIN CONTENT AREA
@@ -792,17 +770,6 @@
         </div>
       </div>
 
-      <!-- Tunnel Status -->
-      <div class="sidebar-tunnel">
-        <div class="tunnel-label">
-          <span class="tunnel-dot" id="tunnel-dot"></span>
-          <span>Webhook Tunnel</span>
-        </div>
-        <a class="tunnel-url" id="tunnel-url-display" onclick="copyTunnelUrl()" title="Click to copy">
-          Connecting…
-        </a>
-      </div>
-
       <nav>
         <div class="nav-section-label">Overview</div>
         <div class="nav-item active" onclick="switchTab('dashboard', this)">
@@ -888,27 +855,32 @@
             </div>
           </div>
 
+            <div class="stat-card" style="border-color:rgba(220,38,38,0.3);">
+              <div class="stat-icon-bg">🚨</div>
+              <div class="stat-label">Overdue / Defaulters</div>
+              <div class="stat-value" id="stat-overdue" style="color:#ef4444;">—</div>
+              <div class="stat-sub" id="stat-overdue-amount">KES — owed</div>
+            </div>
+          </div>
+
           <div class="grid-2">
-            <!-- Webhook URL card -->
-            <div class="glass-card">
+            <!-- Overdue Tenants card -->
+            <div class="glass-card" style="border-color:rgba(220,38,38,0.15);">
               <div class="card-header">
-                <h2><span class="card-icon">🌐</span> Live Webhook URL</h2>
-                <button class="copy-btn" onclick="copyTunnelUrl()">📋 Copy</button>
+                <h2><span class="card-icon">🔴</span> Overdue & Defaulters</h2>
+                <button class="btn btn-ghost btn-sm" onclick="switchTab('tenants',null);setTimeout(()=>filterByStatus('overdue'),200)">View All →</button>
               </div>
-              <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">
-                Share this URL with your payment gateway to receive real-time payment callbacks.
+              <div id="overdue-list-placeholder" style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0;">
+                Loading…
               </div>
-              <code style="
-                display: block;
-                background: rgba(0,0,0,0.3);
-                border: 1px solid var(--glass-border);
-                border-radius: 8px;
-                padding: 12px 14px;
-                font-size: 12px;
-                color: var(--accent);
-                word-break: break-all;
-                line-height: 1.5;
-              " id="dashboard-webhook-url">—</code>
+              <div id="overdue-list-wrap" style="display:none;">
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>Tenant</th><th>Unit</th><th>Rent (KES)</th><th>Status</th><th>Overdue</th></tr></thead>
+                    <tbody id="overdue-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
             <!-- Quick Actions -->
@@ -965,13 +937,21 @@
                 <button class="btn btn-primary btn-sm" onclick="openCheckinModal()">+ Check In</button>
               </div>
             </div>
+            <!-- Filter tabs -->
+            <div style="display:flex;gap:8px;padding:0 0 12px 0;flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm filter-tab active" data-filter="all"      onclick="setTenantFilter('all',this)">All</button>
+              <button class="btn btn-ghost btn-sm filter-tab"        data-filter="active"   onclick="setTenantFilter('active',this)">✅ Active</button>
+              <button class="btn btn-ghost btn-sm filter-tab"        data-filter="overdue"  onclick="setTenantFilter('overdue',this)" style="color:#f97316;">🟠 Overdue</button>
+              <button class="btn btn-ghost btn-sm filter-tab"        data-filter="default"  onclick="setTenantFilter('default',this)" style="color:#ef4444;">🔴 Defaulting</button>
+              <button class="btn btn-ghost btn-sm filter-tab"        data-filter="paid"     onclick="setTenantFilter('paid',this)" style="color:#34d399;">🟢 Paid / Up-to-Date</button>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead><tr>
-                  <th>Name</th><th>Unit</th><th>Phone</th><th>Monthly Rent</th><th>Status</th><th>Move-In</th><th>Actions</th>
+                  <th>Name</th><th>Unit</th><th>Phone</th><th>Monthly Rent</th><th>Due Day</th><th>Payment Status</th><th>Move-In</th><th>Actions</th>
                 </tr></thead>
                 <tbody id="tenants-tbody">
-                  <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👤</div><p>No tenants registered</p></div></td></tr>
+                  <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">👤</div><p>No tenants registered</p></div></td></tr>
                 </tbody>
               </table>
             </div>
@@ -1158,28 +1138,6 @@
                 </div>
               </div>
 
-              <!-- Tunnel -->
-              <div class="glass-card">
-                <div class="card-header">
-                  <h2><span class="card-icon">🌐</span> Tunneling (ngrok)</h2>
-                </div>
-                <div class="form-grid single">
-                  <div class="form-group">
-                    <label>ngrok Auth Token</label>
-                    <input type="password" id="s-ngrok_auth_token" placeholder="Your ngrok authtoken" />
-                  </div>
-                  <div class="form-group">
-                    <label>Active Webhook URL</label>
-                    <div class="flex gap-8" style="align-items:center;">
-                      <input type="text" id="s-tunnel-display" readonly
-                             style="color:var(--accent);background:rgba(56,189,248,0.05);"
-                             placeholder="Tunnel not active" />
-                      <button class="copy-btn" onclick="copyTunnelUrl()">📋</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               <!-- Save button -->
               <button class="btn btn-primary" onclick="saveSettings()" style="width:100%;justify-content:center;padding:14px;">
                 💾 Save All Settings
@@ -1219,6 +1177,10 @@
           <label>Monthly Rent (KES) *</label>
           <input type="number" id="ci-rent" placeholder="25000" min="0" />
         </div>
+        <div class="form-group">
+          <label>Rent Due Day <span style="color:var(--text-muted);font-size:11px;">(1–28, default 5th)</span></label>
+          <input type="number" id="ci-due-day" min="1" max="28" value="5" placeholder="5" />
+        </div>
         <div class="form-group span-2">
           <label>Move-In Date</label>
           <input type="datetime-local" id="ci-movein" />
@@ -1227,6 +1189,43 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" onclick="closeModal('modal-checkin')">Cancel</button>
         <button class="btn btn-primary" onclick="submitCheckin()">✅ Check In Tenant</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT TENANT MODAL -->
+  <div class="modal-overlay" id="modal-edit-tenant">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ Edit Tenant & Due Date</h3>
+        <button class="modal-close" onclick="closeModal('modal-edit-tenant')">✕</button>
+      </div>
+      <input type="hidden" id="edit-t-id" />
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="edit-t-name" placeholder="John Doe" />
+        </div>
+        <div class="form-group">
+          <label>Phone Number *</label>
+          <input type="tel" id="edit-t-phone" placeholder="+254712345678" />
+        </div>
+        <div class="form-group">
+          <label>Unit Number *</label>
+          <input type="text" id="edit-t-unit" placeholder="A-101" />
+        </div>
+        <div class="form-group">
+          <label>Monthly Rent (KES) *</label>
+          <input type="number" id="edit-t-rent" placeholder="25000" min="0" />
+        </div>
+        <div class="form-group span-2">
+          <label>Monthly Due Day <span style="color:var(--text-muted);font-size:11px;">(1–28 of the month, default 5th)</span></label>
+          <input type="number" id="edit-t-due-day" min="1" max="28" value="5" placeholder="5" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modal-edit-tenant')">Cancel</button>
+        <button class="btn btn-primary" onclick="submitEditTenant()">💾 Save Changes</button>
       </div>
     </div>
   </div>
@@ -1389,17 +1388,46 @@
     async function loadDashboard() {
       try {
         const d = await api('/dashboard');
-        document.getElementById('stat-total-tenants').textContent = d.total_tenants;
+        document.getElementById('stat-total-tenants').textContent  = d.total_tenants;
         document.getElementById('stat-active-tenants').textContent = `${d.active_tenants} active`;
         document.getElementById('stat-total-payments').textContent = d.total_payments;
-        document.getElementById('stat-revenue').textContent = `KES ${Number(d.total_collected).toLocaleString('en-KE', {minimumFractionDigits:2})}`;
-        document.getElementById('stat-receipts').textContent = d.total_receipts;
-        document.getElementById('badge-tenants').textContent = d.active_tenants;
+        document.getElementById('stat-revenue').textContent        = `KES ${Number(d.total_collected).toLocaleString('en-KE', {minimumFractionDigits:2})}`;
+        document.getElementById('stat-receipts').textContent       = d.total_receipts;
+        document.getElementById('badge-tenants').textContent  = d.active_tenants;
         document.getElementById('badge-payments').textContent = d.total_payments;
 
-        const wh = d.tunnel_url ? `${d.tunnel_url}/api/v1/payments/webhook` : 'Tunnel not connected';
-        document.getElementById('dashboard-webhook-url').textContent = wh;
-        updateTunnelStatus(d.tunnel_url);
+        // Overdue stat card
+        document.getElementById('stat-overdue').textContent        = d.overdue_count || 0;
+        document.getElementById('stat-overdue-amount').textContent = `KES ${Number(d.overdue_amount||0).toLocaleString('en-KE', {minimumFractionDigits:2})} owed`;
+
+        // Overdue tenants mini-list
+        const overdueWrap        = document.getElementById('overdue-list-wrap');
+        const overduePlaceholder = document.getElementById('overdue-list-placeholder');
+        const overdueTbody       = document.getElementById('overdue-tbody');
+        const overdueStatuses    = new Set(['OVERDUE','DEFAULTING']);
+        try {
+          const tenants = await api('/tenants');
+          const overdue = tenants.filter(t => overdueStatuses.has(t.payment_status));
+          if (overdue.length === 0) {
+            overdueWrap.style.display = 'none';
+            overduePlaceholder.style.display = '';
+            overduePlaceholder.textContent   = '✅ No overdue tenants — all payments are up to date!';
+            overduePlaceholder.style.color   = '#34d399';
+          } else {
+            overduePlaceholder.style.display = 'none';
+            overdueWrap.style.display = '';
+            overdueTbody.innerHTML = overdue.map(t => `
+              <tr>
+                <td><strong>${t.full_name}</strong></td>
+                <td class="muted">${t.unit_number}</td>
+                <td style="font-weight:600;">KES ${Number(t.monthly_rent).toLocaleString()}</td>
+                <td><span class="badge ${t.badge_class||'badge-overdue'}">${t.payment_status}</span></td>
+                <td style="color:#f87171;font-weight:600;">${t.label}</td>
+              </tr>`).join('');
+          }
+        } catch(_) {
+          overduePlaceholder.textContent = 'Could not load overdue data.';
+        }
 
         // Load recent payments
         const payments = await api('/payments');
@@ -1420,25 +1448,10 @@
       } catch (e) { toast('Dashboard load failed: ' + e.message, 'error'); }
     }
 
-    function updateTunnelStatus(url) {
-      const dot = document.getElementById('tunnel-dot');
-      const display = document.getElementById('tunnel-url-display');
-      const sDisplay = document.getElementById('s-tunnel-display');
-      if (url) {
-        dot.classList.add('active');
-        const wh = `${url}/api/v1/payments/webhook`;
-        display.textContent = wh;
-        if (sDisplay) sDisplay.value = wh;
-      } else {
-        dot.classList.remove('active');
-        display.textContent = 'Not connected';
-        if (sDisplay) sDisplay.value = '';
-      }
-    }
-
     /* ────────────────────────────────────────────────
        TENANTS
     ──────────────────────────────────────────────── */
+    let _tenantFilter = 'all';
     let _tenants = [];
     async function loadTenants() {
       try {
@@ -1447,40 +1460,83 @@
       } catch (e) { toast('Could not load tenants: ' + e.message, 'error'); }
     }
 
+    function setTenantFilter(filter, btn) {
+      _tenantFilter = filter;
+      document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      filterTenants();
+    }
+
+    // Allow dashboard "View All" to jump straight to overdue filter
+    function filterByStatus(filter) {
+      const btn = document.querySelector(`.filter-tab[data-filter="${filter}"]`);
+      setTenantFilter(filter, btn);
+    }
+
+    function filterTenants() {
+      const q = (document.getElementById('tenant-search').value || '').toLowerCase();
+      let list = _tenants;
+
+      // Apply tab filter
+      if (_tenantFilter === 'active')  list = list.filter(t => t.status === 'LOGGED_IN');
+      if (_tenantFilter === 'paid')    list = list.filter(t => ['PAID','DUE_SOON','DUE_TODAY'].includes(t.payment_status));
+      if (_tenantFilter === 'overdue') list = list.filter(t => t.payment_status === 'OVERDUE');
+      if (_tenantFilter === 'default') list = list.filter(t => t.payment_status === 'DEFAULTING');
+
+      // Apply search
+      if (q) list = list.filter(t =>
+        t.full_name.toLowerCase().includes(q) ||
+        t.unit_number.toLowerCase().includes(q) ||
+        t.phone_number.toLowerCase().includes(q));
+
+      renderTenants(list);
+    }
+
     function renderTenants(list) {
       const tbody = document.getElementById('tenants-tbody');
       if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👤</div><p>No tenants yet. Click "Check In" to add one.</p></div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">👤</div><p>No tenants match this filter.</p></div></td></tr>`;
         return;
       }
-      tbody.innerHTML = list.map(t => `
+
+      // Map payment_status → badge class
+      const statusBadge = {
+        PAID:        ['badge-paid',        '🟢 Paid'],
+        DUE_SOON:    ['badge-due-soon',    '🟡 Due Soon'],
+        DUE_TODAY:   ['badge-due-today',   '🟠 Due Today'],
+        OVERDUE:     ['badge-overdue',     '🟠 Overdue'],
+        DEFAULTING:  ['badge-defaulting',  '🔴 Defaulting'],
+        CHECKED_OUT: ['badge-checked-out', '⚪ Checked Out'],
+      };
+
+      tbody.innerHTML = list.map(t => {
+        const [bClass, bLabel] = statusBadge[t.payment_status] || ['badge-inactive', t.payment_status || '—'];
+        const payBadge = t.badge_class
+          ? `<span class="badge ${t.badge_class}">${t.label}</span>`
+          : `<span class="badge ${bClass}">${bLabel}</span>`;
+        const acctBadge = t.status === 'LOGGED_IN'
+          ? '<span class="badge badge-active">Active</span>'
+          : '<span class="badge badge-inactive">Checked Out</span>';
+        return `
         <tr>
           <td><strong>${t.full_name}</strong></td>
           <td class="muted">${t.unit_number}</td>
           <td class="muted">${t.phone_number}</td>
           <td style="font-weight:600;">KES ${Number(t.monthly_rent).toLocaleString()}</td>
-          <td>${t.status === 'LOGGED_IN'
-            ? '<span class="badge badge-active">Active</span>'
-            : '<span class="badge badge-inactive">Checked Out</span>'}</td>
+          <td class="muted" style="text-align:center;">${t.due_day || 5}<sup style="color:var(--text-muted);">th</sup></td>
+          <td>${payBadge}</td>
           <td class="muted">${fmtDate(t.move_in_date)}</td>
           <td>
             <div class="flex gap-8">
+              <button class="btn btn-ghost btn-sm" onclick="openEditTenantModal(${t.id})">✏️ Edit</button>
               ${t.status === 'LOGGED_IN'
                 ? `<button class="btn btn-danger btn-sm" onclick="openCheckoutModal(${t.id},'${escHtml(t.full_name)}')">🚪 Check Out</button>`
                 : `<button class="btn btn-success btn-sm" onclick="reactivateTenant(${t.id})">↩ Re-Activate</button>`}
               <button class="btn btn-danger btn-sm" onclick="openDeleteModal('tenant',${t.id},'${escHtml(t.full_name)}')">🗑 Delete</button>
             </div>
           </td>
-        </tr>`).join('');
-    }
-
-    function filterTenants() {
-      const q = document.getElementById('tenant-search').value.toLowerCase();
-      renderTenants(_tenants.filter(t =>
-        t.full_name.toLowerCase().includes(q) ||
-        t.phone_number.includes(q) ||
-        t.unit_number.toLowerCase().includes(q)
-      ));
+        </tr>`;
+      }).join('');
     }
 
     /* ────────────────────────────────────────────────
@@ -1545,17 +1601,11 @@
         const s = await api('/settings');
         const fields = ['property_name','property_address','property_phone','receipt_logo_path',
           'mpesa_consumer_key','mpesa_consumer_secret','mpesa_passkey','mpesa_shortcode','mpesa_webhook_token',
-          'whatsapp_mode','whatsapp_sid','whatsapp_auth_token','whatsapp_sender','ngrok_auth_token'];
+          'whatsapp_mode','whatsapp_sid','whatsapp_auth_token','whatsapp_sender'];
         fields.forEach(f => {
           const el = document.getElementById('s-' + f);
           if (el) el.value = s[f] || '';
         });
-        // Update tunnel display
-        if (s.tunnel_url) {
-          const wh = `${s.tunnel_url}/api/v1/payments/webhook`;
-          const disp = document.getElementById('s-tunnel-display');
-          if (disp) disp.value = wh;
-        }
         toggleWhatsAppMode();
         // Update sidebar brand name
         if (s.property_name) {
@@ -1582,10 +1632,7 @@
           if (connectedBox) connectedBox.style.display = 'none';
           if (pairingBox) pairingBox.style.display = 'block';
           if (res.qr) {
-            if (qrImg) {
-              qrImg.src = res.qr;
-              qrImg.style.display = 'block';
-            }
+            if (qrImg) { qrImg.src = res.qr; qrImg.style.display = 'block'; }
             if (qrPlaceholder) qrPlaceholder.style.display = 'none';
           } else {
             if (qrImg) qrImg.style.display = 'none';
@@ -1604,14 +1651,9 @@
       document.getElementById('wa-local-fields').style.display = mode === 'local' ? '' : 'none';
       if (mode === 'local') {
         pollWhatsAppStatus();
-        if (!_waPollTimer) {
-          _waPollTimer = setInterval(pollWhatsAppStatus, 3000);
-        }
+        if (!_waPollTimer) _waPollTimer = setInterval(pollWhatsAppStatus, 3000);
       } else {
-        if (_waPollTimer) {
-          clearInterval(_waPollTimer);
-          _waPollTimer = null;
-        }
+        if (_waPollTimer) { clearInterval(_waPollTimer); _waPollTimer = null; }
       }
     }
 
@@ -1619,7 +1661,7 @@
       try {
         const fields = ['property_name','property_address','property_phone','receipt_logo_path',
           'mpesa_consumer_key','mpesa_consumer_secret','mpesa_passkey','mpesa_shortcode','mpesa_webhook_token',
-          'whatsapp_mode','whatsapp_sid','whatsapp_auth_token','whatsapp_sender','ngrok_auth_token'];
+          'whatsapp_mode','whatsapp_sid','whatsapp_auth_token','whatsapp_sender'];
         const payload = {};
         fields.forEach(f => {
           const el = document.getElementById('s-' + f);
@@ -1627,36 +1669,9 @@
         });
         await api('/settings', 'POST', payload);
         toast('Settings saved successfully!', 'success');
-        // Update brand name live
         if (payload.property_name)
           document.getElementById('sb-prop-name').textContent = payload.property_name;
-        // Refresh tunnel status
-        setTimeout(pollTunnelStatus, 3000);
       } catch (e) { toast('Save failed: ' + e.message, 'error'); }
-    }
-
-    /* ────────────────────────────────────────────────
-       TUNNEL POLLING
-    ──────────────────────────────────────────────── */
-    async function pollTunnelStatus() {
-      try {
-        const d = await api('/tunnel/status');
-        updateTunnelStatus(d.url);
-        const wh = document.getElementById('dashboard-webhook-url');
-        if (wh) wh.textContent = d.webhook_url || 'Tunnel not connected';
-      } catch (e) { /* silent */ }
-    }
-    // Poll every 5 seconds for tunnel status
-    setInterval(pollTunnelStatus, 5000);
-
-    function copyTunnelUrl() {
-      const el = document.getElementById('tunnel-url-display');
-      const url = el ? el.textContent : '';
-      if (!url || url === 'Not connected' || url === 'Connecting…') {
-        toast('No tunnel URL available yet.', 'warning');
-        return;
-      }
-      navigator.clipboard.writeText(url).then(() => toast('Webhook URL copied!', 'success'));
     }
 
     /* ────────────────────────────────────────────────
@@ -1674,20 +1689,23 @@
       ['ci-name','ci-phone','ci-unit','ci-rent','ci-movein'].forEach(id => {
         document.getElementById(id).value = '';
       });
+      document.getElementById('ci-due-day').value = '5';
       document.getElementById('ci-movein').value = new Date().toISOString().slice(0,16);
       openModal('modal-checkin');
     }
 
     async function submitCheckin() {
-      const name  = document.getElementById('ci-name').value.trim();
-      const phone = document.getElementById('ci-phone').value.trim();
-      const unit  = document.getElementById('ci-unit').value.trim();
-      const rent  = document.getElementById('ci-rent').value;
+      const name    = document.getElementById('ci-name').value.trim();
+      const phone   = document.getElementById('ci-phone').value.trim();
+      const unit    = document.getElementById('ci-unit').value.trim();
+      const rent    = document.getElementById('ci-rent').value;
+      const dueDay  = parseInt(document.getElementById('ci-due-day').value) || 5;
       if (!name || !phone || !unit || !rent) { toast('All starred fields are required.','warning'); return; }
       try {
         await api('/tenants', 'POST', {
           full_name: name, phone_number: phone, unit_number: unit,
           monthly_rent: parseFloat(rent),
+          due_day: dueDay,
           move_in_date: document.getElementById('ci-movein').value || null,
         });
         toast(`${name} checked in successfully!`, 'success');
@@ -1695,6 +1713,41 @@
         loadTenants();
         loadDashboard();
       } catch (e) { toast('Check-in failed: ' + e.message, 'error'); }
+    }
+
+    function openEditTenantModal(id) {
+      const t = _tenants.find(x => x.id === id);
+      if (!t) return;
+      document.getElementById('edit-t-id').value = t.id;
+      document.getElementById('edit-t-name').value = t.full_name || '';
+      document.getElementById('edit-t-phone').value = t.phone_number || '';
+      document.getElementById('edit-t-unit').value = t.unit_number || '';
+      document.getElementById('edit-t-rent').value = t.monthly_rent || '';
+      document.getElementById('edit-t-due-day').value = t.due_day || 5;
+      openModal('modal-edit-tenant');
+    }
+
+    async function submitEditTenant() {
+      const id     = document.getElementById('edit-t-id').value;
+      const name   = document.getElementById('edit-t-name').value.trim();
+      const phone  = document.getElementById('edit-t-phone').value.trim();
+      const unit   = document.getElementById('edit-t-unit').value.trim();
+      const rent   = document.getElementById('edit-t-rent').value;
+      const dueDay = parseInt(document.getElementById('edit-t-due-day').value) || 5;
+      if (!name || !phone || !unit || !rent) { toast('All starred fields are required.', 'warning'); return; }
+      try {
+        await api(`/tenants/${id}`, 'PUT', {
+          full_name: name,
+          phone_number: phone,
+          unit_number: unit,
+          monthly_rent: parseFloat(rent),
+          due_day: dueDay,
+        });
+        toast('Tenant & due date updated successfully!', 'success');
+        closeModal('modal-edit-tenant');
+        loadTenants();
+        loadDashboard();
+      } catch (e) { toast('Update failed: ' + e.message, 'error'); }
     }
 
     async function openManualPaymentModal() {
@@ -1859,8 +1912,6 @@
     ──────────────────────────────────────────────── */
     window.addEventListener('DOMContentLoaded', () => {
       loadDashboard();
-      // Start polling tunnel immediately
-      pollTunnelStatus();
     });
   </script>
 </body>

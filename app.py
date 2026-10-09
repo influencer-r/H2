@@ -93,11 +93,17 @@ def index():
 # ============================================================
 @app.route("/api/v1/dashboard")
 def api_dashboard():
-    tenants = db.get_all_tenants()
+    tenants  = db.get_all_tenants()
     payments = db.get_all_payments()
     receipts = db.get_all_receipts()
 
-    active = sum(1 for t in tenants if t["status"] == "LOGGED_IN")
+    active_statuses = {"PAID", "DUE_SOON", "DUE_TODAY", "OVERDUE", "DEFAULTING"}
+    overdue_statuses = {"OVERDUE", "DEFAULTING"}
+
+    active         = sum(1 for t in tenants if t.get("payment_status") in active_statuses)
+    overdue_list   = [t for t in tenants if t.get("payment_status") in overdue_statuses]
+    overdue_count  = len(overdue_list)
+    overdue_amount = sum(t.get("balance_due", 0) for t in overdue_list)
     total_collected = sum(p["amount_paid"] for p in payments)
 
     return jsonify({
@@ -106,7 +112,8 @@ def api_dashboard():
         "total_payments":   len(payments),
         "total_collected":  total_collected,
         "total_receipts":   len(receipts),
-        "tunnel_url":       tunnel.get_public_url() or "",
+        "overdue_count":    overdue_count,
+        "overdue_amount":   overdue_amount,
     })
 
 
@@ -115,8 +122,8 @@ def api_dashboard():
 # ============================================================
 @app.route("/api/v1/tenants", methods=["GET"])
 def api_list_tenants():
-    rows = db.get_all_tenants()
-    return jsonify([dict(r) for r in rows])
+    rows = db.get_all_tenants()   # already list[dict] with overdue info
+    return jsonify(rows)
 
 
 @app.route("/api/v1/tenants", methods=["POST"])
@@ -134,6 +141,7 @@ def api_create_tenant():
             unit_number=data["unit_number"].strip(),
             monthly_rent=float(data["monthly_rent"]),
             move_in_date=data.get("move_in_date"),
+            due_day=int(data.get("due_day", 5)),
         )
         return jsonify({"id": tid, "message": "Tenant checked in successfully."}), 201
     except Exception as exc:
@@ -152,7 +160,7 @@ def api_get_tenant(tenant_id):
 @app.route("/api/v1/tenants/<int:tenant_id>", methods=["PUT"])
 def api_update_tenant(tenant_id):
     data = request.get_json(force=True)
-    allowed = {"full_name", "phone_number", "unit_number", "monthly_rent", "status"}
+    allowed = {"full_name", "phone_number", "unit_number", "monthly_rent", "status", "due_day"}
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
         return jsonify({"error": "No valid fields to update."}), 400
@@ -476,7 +484,6 @@ def api_get_settings():
             safe[k] = v[:4] + "●●●●●●●●"
         else:
             safe[k] = v
-    safe["tunnel_url"] = tunnel.get_public_url() or ""
     return jsonify(safe)
 
 
@@ -489,28 +496,15 @@ def api_save_settings():
     # Strip redacted values before saving
     clean = {k: v for k, v in data.items() if "●" not in str(v)}
     db.bulk_upsert_settings(clean)
-
-    # If ngrok token changed, restart the tunnel
-    if "ngrok_auth_token" in clean:
-        new_token = clean["ngrok_auth_token"]
-        if new_token:
-            tunnel.stop_tunnel()
-            tunnel.start_tunnel(port=5000, auth_token=new_token)
-
     return jsonify({"message": "Settings saved."})
 
 
 # ============================================================
-# API — TUNNEL STATUS
+# API — TUNNEL STATUS (stubbed — ngrok removed from UI)
 # ============================================================
 @app.route("/api/v1/tunnel/status", methods=["GET"])
 def api_tunnel_status():
-    url = tunnel.get_public_url()
-    return jsonify({
-        "active": bool(url),
-        "url": url or "",
-        "webhook_url": f"{url}/api/v1/payments/webhook" if url else "",
-    })
+    return jsonify({"active": False, "url": "", "webhook_url": ""})
 
 
 # ============================================================
